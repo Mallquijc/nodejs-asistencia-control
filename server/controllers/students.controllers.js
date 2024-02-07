@@ -26,7 +26,7 @@ export const getStudent = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
+// POST /students
 export const createStudents = async (req, res) => {
   try {
     const { cDni, vNombres, vApellido_p, vApellido_m, estado } = req.body;
@@ -61,7 +61,7 @@ export const createStudents = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
+// PUT /students/:{id}
 export const updateStudents = async (req, res) => {
   try {
     const [result] = await pool.query(
@@ -74,24 +74,43 @@ export const updateStudents = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
+// DELETE /students/:{id}
 export const deleteStudents = async (req, res) => {
   try {
+    // Consulta para obtener la información de la imagen antes de eliminar el estudiante
+    const [student] = await pool.query(
+      "SELECT public_id FROM tblEstudiante WHERE cDni = ?",
+      [req.params.id]
+    );
+
+    // aca si no lo encunetro al estudiante botara 404(no encontrado)
+    if (student.length === 0) {
+      return res.sendStatus(404);
+    }
+
+    // obtengo el public id haciendo lo de arriba 
+    const { public_id } = student[0];
+
+    // Eliminar al estudiante de la base de datos
     const [result] = await pool.query(
       "DELETE FROM tblEstudiante WHERE cDni = ?",
       [req.params.id]
     );
-    if(result.public_id) {
-      await deleteImage(result.public_id)
-    }else{
-      return res.sendStatus(204)
-    }
+
+    // Si ningún estudiante fue afectado por la eliminación, devolver un error 404
     if (result.affectedRows === 0) {
       return res.sendStatus(404);
     }
+
+    // Si hay un public_id asociado a la imagen, eliminar la imagen de Cloudinary
+    if (public_id) {
+      await deleteImage(public_id);
+    }
+
     return res.sendStatus(204);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message });
   }
 };
+
